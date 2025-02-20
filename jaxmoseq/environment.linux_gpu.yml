@@ -1,0 +1,17 @@
+name: jax_moseq_gpu
+
+channels:
+  - conda-forge
+  - nvidia
+  - defaults
+
+dependencies:
+  - python=3.9
+  - pytables
+  - jax=0.3.22
+  - cuda-nvcc=11.8.89
+  - pip
+  - pip:
+    - "jax-moseq[cuda11]"
+    - jupyterlab
+    - etils==1.5.2
