@@ -1,0 +1,1 @@
+{'error_estimator': {'intercept': 0.25, 'slope': -0.5}, 'obs_hypparams': {'nu_s': 5, 'nu_sigma': 100000.0, 'sigmasq_0': 0.1, 'sigmasq_C': 0.1}, 'ar_hypparams': {'K_0_scale': 10.0, 'S_0_scale': 0.01, 'latent_dim': 3, 'nlags': 3}, 'trans_hypparams': {'alpha': 5.7, 'gamma': 1000.0, 'kappa': 1000000.0, 'num_states': 8}, 'cen_hypparams': {'sigmasq_loc': 0.5}}
