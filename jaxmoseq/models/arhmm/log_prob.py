@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 from functools import partial
 from jaxmoseq.utils.autoregression import get_nlags, ar_log_likelihood
-from jax_moseq.utils import mixed_map
+from jaxmoseq.utils import mixed_map
 from dynamax.hidden_markov_model.inference import hmm_filter
 from functools import partial
 

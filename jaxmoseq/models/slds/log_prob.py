@@ -2,9 +2,9 @@ import jax
 import jax.numpy as jnp
 import tensorflow_probability.substrates.jax.distributions as tfd
 
-from jax_moseq.utils import apply_affine
+from jaxmoseq.utils import apply_affine
 
-from jax_moseq.models import arhmm
+from jaxmoseq.models import arhmm
 
 na = jnp.newaxis
 

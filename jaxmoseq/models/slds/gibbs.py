@@ -2,9 +2,9 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 from functools import partial
-from jax_moseq.utils import mixed_map, apply_affine
-from jax_moseq.models import arhmm
-from jax_moseq.utils.kalman import (
+from jaxmoseq.utils import mixed_map, apply_affine
+from jaxmoseq.models import arhmm
+from jaxmoseq.utils.kalman import (
     kalman_sample,
     ar_to_lds_dynamics,
     ar_to_lds_emissions,

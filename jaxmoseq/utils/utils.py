@@ -196,8 +196,6 @@ def device_put_as_scalar(x):
 
 
 def apply_affine(x, Ab):
-    print(Ab.shape)
-    print(pad_affine(x).shape)
     return jnp.einsum("...ij, ...j->...i", Ab, pad_affine(x))
 
 

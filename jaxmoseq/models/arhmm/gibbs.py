@@ -12,13 +12,13 @@ from jaxmoseq.utils import (
     mixed_map,
 )
 
-from jax_moseq.utils.distributions import sample_mniw, sample_hmm_stateseq
+from jaxmoseq.utils.distributions import sample_mniw, sample_hmm_stateseq
 from jaxmoseq.utils.autoregression import (
     get_lags,
     get_nlags,
     ar_log_likelihood,
 )
-from jax_moseq.utils.transitions import resample_hdp_transitions
+from jaxmoseq.utils.transitions import resample_hdp_transitions
 from functools import partial
 
 na = jnp.newaxis

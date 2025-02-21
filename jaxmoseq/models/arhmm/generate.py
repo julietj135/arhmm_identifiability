@@ -6,7 +6,7 @@ import numpy as np
 
 na = jnp.newaxis
 
-from jax_moseq.utils import pad_affine
+from jaxmoseq.utils import pad_affine
 
 
 def generate_initial_state(seed, Ab, Q):

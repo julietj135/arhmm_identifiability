@@ -3,15 +3,15 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 
-from jax_moseq.utils import (
+from jaxmoseq.utils import (
     jax_io,
     device_put_as_scalar,
     fit_pca,
     check_precision,
 )
 
-from jax_moseq.models import arhmm
-from jax_moseq.models.slds.gibbs import resample_scales
+from jaxmoseq.models import arhmm
+from jaxmoseq.models.slds.gibbs import resample_scales
 
 na = jnp.newaxis
 

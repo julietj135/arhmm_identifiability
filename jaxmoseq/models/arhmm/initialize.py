@@ -2,11 +2,11 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 
-from jax_moseq.utils import device_put_as_scalar, check_precision
-from jax_moseq.utils.transitions import init_hdp_transitions
-from jax_moseq.utils.distributions import sample_mniw
+from jaxmoseq.utils import device_put_as_scalar, check_precision
+from jaxmoseq.utils.transitions import init_hdp_transitions
+from jaxmoseq.utils.distributions import sample_mniw
 
-from jax_moseq.models.arhmm.gibbs import resample_discrete_stateseqs
+from .gibbs import resample_discrete_stateseqs
 
 na = jnp.newaxis
 
