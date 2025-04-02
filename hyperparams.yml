@@ -22,8 +22,8 @@ ar_hypparams:
 # transition hyperparameters
 trans_hypparams:
   alpha: 5.7
-  gamma: 1000.0
-  kappa: 1000000.0
+  gamma: 100.0
+  kappa: 10000.0
   num_states: 8
 
 # centroid movement hyperparameters

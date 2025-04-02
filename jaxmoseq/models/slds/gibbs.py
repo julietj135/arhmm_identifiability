@@ -17,7 +17,7 @@ na = jnp.newaxis
 @partial(jax.jit, static_argnames=("parallel_message_passing",))
 def resample_continuous_stateseqs(
     seed,
-    y,
+    Y,
     mask,
     z,
     s,
@@ -35,7 +35,7 @@ def resample_continuous_stateseqs(
     ----------
     seed : jr.PRNGKey
         JAX random seed.
-    y : jax.Array of shape (n_recordings, n_timesteps, obs_dim)
+    Y : jax.Array of shape (n_recordings, n_timesteps, obs_dim)
         Observations.
     mask : jax.Array of shape (n_recordings, n_timesteps)
         Binary indicator, 1=valid frames, 0=invalid frames.
@@ -66,7 +66,11 @@ def resample_continuous_stateseqs(
     x : jax.Array of shape (n_recordings, n_timesteps, latent_dim)
         Posterior sample of latent trajectories.
     """
-    n_recordings, latent_dim, obs_dim = y.shape[0], Ab.shape[1], y.shape[-1]
+    # if Y wasn't flattened before
+    if Y.shape[-1] <= 3:
+        Y = Y.reshape(*Y.shape[:-2], -1)
+    
+    n_recordings, latent_dim, obs_dim = Y.shape[0], Ab.shape[1], Y.shape[-1]
     n_lags = Ab.shape[2] // latent_dim
 
     # TODO Parameterize these distributional hyperparameter
@@ -78,7 +82,7 @@ def resample_continuous_stateseqs(
     # =====================================================================
     # 1. Omit the first L frames of observations and associated sequences
     # =====================================================================
-    y_ = y[:, n_lags - 1 :]
+    y_ = Y[:, n_lags - 1 :]
     mask_ = mask[:, n_lags - 1 :]
 
     # Scale unscaled observations by fitted diagonal scales
@@ -89,7 +93,7 @@ def resample_continuous_stateseqs(
     # ==========================================================================
     C_, d_, R_, y_, m0_, S0_ = jax.vmap(
         ar_to_lds_emissions, in_axes=(na, 0, 0, na, na, na)
-    )(Cd, sigmasq * s, y, m0, S0, n_lags)
+    )(Cd, sigmasq * s, Y, m0, S0, n_lags)
 
     A_, b_, Q_ = ar_to_lds_dynamics(Ab, Q)
 

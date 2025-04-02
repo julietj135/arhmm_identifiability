@@ -1,5 +1,7 @@
 import yaml
 from data.preprocess import *
+from utils import _set_parallel_flag, save_hdf5, update_hypparams
+from viz import *
 import jax
 
 import jax.numpy as jnp
@@ -9,11 +11,18 @@ from functools import partial
 
 from jaxmoseq.utils.kalman import kalman_sample
 from jaxmoseq.utils.distributions import sample_vonmises_fisher
-from jaxmoseq.utils.utils import batch, jax_io
+from jaxmoseq.utils.utils import batch, jax_io, device_put_as_scalar
 import tensorflow_probability.substrates.jax.distributions as tfd
 from sklearn.decomposition import PCA
 
+import tqdm
+import h5py
+import os
+from textwrap import fill
+import warnings
+
 na = jnp.newaxis
+
 
 def get_pca(Y_flat,
             mask,
@@ -120,109 +129,166 @@ def init_model(
     states["s"] = slds.resample_scales_from_sqerr(seed, sqerr, **params, s_0=noise_prior, **obs_hypparams) 
     model["states"] = states
     
-    return model
+    data = jax.device_put({"mask": mask, "Y": Y})
+    
+    return model, data
 
-def fit_model_AR(prefix, 
+def fit_model(project_dir,
+              model_name,
+              model,
               seed, 
               data,
-              pca,
-              save_dir,
               kappa,
-              num_ar_iters,
-              num_full_iters,
-              body,
-              **kwargs): ### in progress
+              num_iters,
+              ar_only=True,
+              save_every_n_iters=25,
+              jitter=1e-3,
+              parallel_message_passing=None,
+              **kwargs): 
     
-    # stage 1: fit the model with AR only
-    model_dict["hypparams"]["kappa"] = ar_only_kappa
-    model = kpms.fit_model(
-        model,
-        data,
-        metadata,
-        save_dir,
-        model_name,
-        verbose=False,
-        ar_only=True,
-        num_iters=num_ar_iters
-    )[0]
-    
-    # stage 2: fit the full model
-    model = kpms.update_hypparams(model, kappa=full_model_kappa)
-    kpms.fit_model(
-        model,
-        data,
-        metadata,
-        save_dir,
-        model_name,
-        verbose=False,
-        ar_only=False,
-        fix_heading=fix_heading, 
-        neglect_location=neglect_location,
-        start_iter=num_ar_iters,
-        num_iters=num_full_iters
-    )
-    
-    return model, model_name
+    savedir = os.path.join(project_dir, model_name)
+    if not os.path.exists(savedir):
+        os.makedirs(savedir)
+    print(fill(f"Outputs will be saved to {savedir}"))
 
-def resample_model(
-    data,
-    seed,
-    states,
-    params,
-    hypparams,
-    noise_prior,
-    ar_only=False,
-    states_only=False,
-    resample_global_noise_scale=False,
-    resample_local_noise_scale=True,
-    verbose=False,
-    jitter=1e-3,
-    parallel_message_passing=False,
-    **kwargs
-):
-    model = arhmm.resample_model(
-        data, seed, states, params, hypparams, states_only, verbose=verbose
-    )
+    start_iter = 0
+    checkpoint_path = os.path.join(savedir, "checkpoint.h5")
+    if not os.path.exists(checkpoint_path):
+        save_hdf5(
+            checkpoint_path,
+            {
+                "model_snapshots": {f"{start_iter}": model},
+                "data": data,
+            },
+        )
+    else:  # delete model snapshots later than start_iter
+        with h5py.File(checkpoint_path, "a") as f:
+            for k in list(f["model_snapshots"].keys()):
+                if int(k) > start_iter:
+                    del f["model_snapshots"][k]
+    
+    parallel_message_passing = _set_parallel_flag(parallel_message_passing)
+    model = device_put_as_scalar(model)
+    
+    with tqdm.trange(start_iter, num_iters + 1, ncols=72) as pbar:
+        seed = model["seed"]
+        for iteration in pbar:
+            
+            model = slds.resample_model(
+                        data,
+                        **model,
+                        ar_only=ar_only)
+            # model = arhmm.resample_model(data, **model)
+            
+            # params = model["params"].copy()
+            # states = model["states"].copy()
+                        
+            # if ar_only:
+            #     continue
+            
+            # states["x"] = slds.resample_continuous_stateseqs(
+            #                         seed,
+            #                         **data,
+            #                         **states,
+            #                         **params,
+            #                         jitter=jitter,
+            #                         parallel_message_passing=parallel_message_passing
+            #                     )
+            
+            # sqerr = compute_squared_error(**data,
+            #                         **states,
+            #                         **params)
+            # states["s"] = slds.resample_scales_from_sqerr(seed,
+            #                         **data,
+            #                         **states,
+            #                         **params,
+            #                         s_0=noise_prior,
+            #                         **hypparams["obs_hypparams"])
+            
+            if save_every_n_iters is not None and iteration > start_iter:
+                if iteration == num_iters or (
+                    save_every_n_iters > 0 and iteration % save_every_n_iters == 0
+                ):
+                    save_hdf5(checkpoint_path, model, f"model_snapshots/{iteration}")
+                    plot_progress(
+                        model,
+                        data,
+                        checkpoint_path,
+                        iteration,
+                        project_dir,
+                        model_name=model_name,
+                        )
+    
     if ar_only:
-        model["noise_prior"] = noise_prior
-        return model
+        return model, model_name
+    else:
+        # model = {"seed": seed,
+        #         "states": states,
+        #         "params": params,
+        #         "hypparams": hypparams,
+        #         "noise_prior": noise_prior,}
+        
+        return model, model_name
 
-    seed = model["seed"]
-    params = model["params"].copy()
-    states = model["states"].copy()
+# def resample_model(
+#     data,
+#     seed,
+#     states,
+#     params,
+#     hypparams,
+#     noise_prior,
+#     ar_only=False,
+#     states_only=False,
+#     resample_global_noise_scale=False,
+#     resample_local_noise_scale=True,
+#     verbose=False,
+#     jitter=1e-3,
+#     parallel_message_passing=False,
+#     **kwargs
+# ):
+#     model = arhmm.resample_model(
+#         data, seed, states, params, hypparams, states_only, verbose=verbose
+#     )
+#     if ar_only:
+#         model["noise_prior"] = noise_prior
+#         return model
+
+#     seed = model["seed"]
+#     params = model["params"].copy()
+#     states = model["states"].copy()
     
-    states["x"] = slds.resample_continuous_stateseqs(
-        seed,
-        Y,
-        mask,
-        z,
-        s,
-        Ab,
-        Q,
-        Cd,
-        sigmasq,
-        jitter=jitter,
-        parallel_message_passing=parallel_message_passing,
-    )
+#     states["x"] = slds.resample_continuous_stateseqs(
+#         seed,
+#         Y,
+#         mask,
+#         z,
+#         s,
+#         Ab,
+#         Q,
+#         Cd,
+#         sigmasq,
+#         jitter=jitter,
+#         parallel_message_passing=parallel_message_passing,
+#     )
     
-    sqerr = compute_squared_error(Y, x, v, h, Cd, mask)
-    params["sigmasq"] = slds.resample_obs_variance_from_sqerr(
-        seed, sqerr, mask, s, nu_sigma, sigmasq_0
-    )
+#     sqerr = compute_squared_error(Y, x, v, h, Cd, mask)
+#     params["sigmasq"] = slds.resample_obs_variance_from_sqerr(
+#         seed, sqerr, mask, s, nu_sigma, sigmasq_0
+#     )
     
-    states["s"] = slds.resample_scales_from_sqerr(seed, sqerr, sigmasq, nu_s, s_0)
+#     states["s"] = slds.resample_scales_from_sqerr(seed, sqerr, sigmasq, nu_s, s_0)
     
-    return {
-        "seed": seed,
-        "states": states,
-        "params": params,
-        "hypparams": hypparams,
-        "noise_prior": noise_prior,
-    }
+#     return {
+#         "seed": seed,
+#         "states": states,
+#         "params": params,
+#         "hypparams": hypparams,
+#         "noise_prior": noise_prior,
+#     }
     
     
 @jax.jit
-def compute_squared_error(Y, x, v, h, Cd, mask=None):
+def compute_squared_error(Y, x, v, h, Cd, mask=None, **kwargs):
     """
     Computes the squared error between model predicted
     and true observations.
