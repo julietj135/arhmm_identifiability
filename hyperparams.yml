@@ -24,7 +24,7 @@ trans_hypparams:
   alpha: 5.7
   gamma: 100.0
   kappa: 10000.0
-  num_states: 8
+  num_states: 2
 
 # centroid movement hyperparameters
 cen_hypparams:

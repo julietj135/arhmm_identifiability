@@ -103,25 +103,31 @@ def get_sequences(save_dir,
                   prefix,
                   data,
                   subject_id = 0,
+                  model_names = None,
                   **kwargs
                   ):
-    # get model names
-    model_names=[]
-    for subdir, dirs, files in os.walk(save_dir):
-        if len(subdir.split("/")[-1])>0 and prefix in subdir.split("/")[-1]:
-            model_names.append(subdir.split("/")[-1])
-    model_names.sort()
+    
+    if model_names == None:
+        model_names=[]
+        for subdir, dirs, files in os.walk(save_dir):
+            if len(subdir.split("/")[-1])>0 and prefix in subdir.split("/")[-1]:
+                model_names.append(subdir.split("/")[-1])
+        model_names.sort()
+        
+    if not os.path.isdir(save_dir+"/figures/"):
+        os.mkdir(save_dir+"/figures/")
     
     num_subjects, num_frames, num_keypoints, d = data["Y"].shape[0], data["Y"].shape[1], data["Y"].shape[2], data["Y"].shape[3]
 
     # plot sequences for all models in one graph
     fig, axs = plt.subplots(len(model_names), 1, figsize=(10,20))  # Adjust figsize as needed
     for i, model_name in enumerate(model_names):
+        print(model_name)
         plot_states(save_dir, model_name, subject_id, 0, num_frames, axs[i])
     fig.tight_layout()
   
-    print("saving in ", save_dir + "/figures/state_sequence_{}.pdf".format(key))
-    fig.savefig(save_dir + "/figures/state_sequence_{}.pdf".format(key))
+    print("saving in ", save_dir + "/figures/state_sequence_{}.pdf".format(subject_id))
+    fig.savefig(save_dir + "/figures/state_sequence_{}.pdf".format(subject_id))
     
 def plot_states(save_dir, 
                 model_name, 
@@ -134,9 +140,9 @@ def plot_states(save_dir,
     if not os.path.isdir(model_dir+"/figures/"):
         os.mkdir(model_dir+"/figures/")
     
-    model, data, metadata, current_iter = load_checkpoint(save_dir, model_name)
+    model, data, current_iter = load_checkpoint(save_dir, model_name)
     mask = np.array(data["mask"])
-    window_size = int(min(window_size, mask[index].sum() - 1))
+    # window_size = int(min(window_size, mask[index].sum() - 1))
     print("Shape of mask: ", mask.shape, " same as shape of 'z'")
         
     sample_state_history = []
@@ -145,18 +151,19 @@ def plot_states(save_dir,
         
         for i in saved_iterations:
             z = f[f"model_snapshots/{i}/states/z"][()]
-            sample_state_history.append(z[index, start : start + window_size])
-    print("The mask for this segment/subject is {} frames".format(mask[index].sum()))
+            sample_state_history.append(z[name, start : start + window_size])
+    # print("The mask for this segment/subject is {} frames".format(mask[name].sum()))
     ax.imshow(sample_state_history, cmap = plt.cm.jet, aspect="auto", interpolation="nearest")
-    ax.set_xlabel("Time (frames)")
-    ax.set_ylabel("Iterations")
-    ax.set_title("State sequence history for {}, {}".format(name, model_name))
+    # ax.set_xlabel("Time (frames)")
+    # ax.set_ylabel("Iterations")
+    # ax.set_title("State sequence history for {}, {}".format(name, model_name))
+    ax.set_title(model_name)
     yticks = [int(y) for y in ax.get_yticks() if y <= len(saved_iterations) and y > 0]
     xticks = [int(x) for x in ax.get_xticks() if x <= start + window_size and x >= 0]
     yticklabels = saved_iterations[yticks]
     xticklabels = np.array(xticks)+np.ones(len(xticks))*start
     xticklabels = xticklabels.astype(int)
-    ax.set_yticks(yticks)
-    ax.set_yticklabels(yticklabels)
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticklabels)
+    # ax.set_yticks(yticks)
+    # ax.set_yticklabels(yticklabels)
+    # ax.set_xticks(xticks)
+    # ax.set_xticklabels(xticklabels)

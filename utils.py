@@ -81,7 +81,8 @@ def load_checkpoint(project_dir=None, model_name=None, path=None, iteration=None
     model = load_hdf5(path, f"model_snapshots/{iteration}")
     # metadata = load_hdf5(path, "metadata")
     data = load_hdf5(path, "data")
-    return model, data, metadata, iteration
+    # return model, data, metadata, iteration
+    return model, data, iteration
 
 def _loadtree_hdf5(leaf):
     """Recursively load a pytree from an h5 file group."""

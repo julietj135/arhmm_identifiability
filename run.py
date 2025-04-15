@@ -143,7 +143,7 @@ def fit_model(project_dir,
               ar_only=True,
               save_every_n_iters=25,
               jitter=1e-3,
-              parallel_message_passing=None,
+              parallel_message_passing=True,
               **kwargs): 
     
     savedir = os.path.join(project_dir, model_name)
@@ -174,36 +174,26 @@ def fit_model(project_dir,
         seed = model["seed"]
         for iteration in pbar:
             
-            model = slds.resample_model(
-                        data,
-                        **model,
-                        ar_only=ar_only)
-            # model = arhmm.resample_model(data, **model)
+            # model = slds.resample_model(
+            #             data,
+            #             **model,
+            #             ar_only=ar_only)
+            model = arhmm.resample_model(data, **model)
             
-            # params = model["params"].copy()
-            # states = model["states"].copy()
+            params = model["params"].copy()
+            states = model["states"].copy()
                         
-            # if ar_only:
-            #     continue
+            if ar_only:
+                continue
             
-            # states["x"] = slds.resample_continuous_stateseqs(
-            #                         seed,
-            #                         **data,
-            #                         **states,
-            #                         **params,
-            #                         jitter=jitter,
-            #                         parallel_message_passing=parallel_message_passing
-            #                     )
-            
-            # sqerr = compute_squared_error(**data,
-            #                         **states,
-            #                         **params)
-            # states["s"] = slds.resample_scales_from_sqerr(seed,
-            #                         **data,
-            #                         **states,
-            #                         **params,
-            #                         s_0=noise_prior,
-            #                         **hypparams["obs_hypparams"])
+            states["x"] = slds.resample_continuous_stateseqs(
+                                    seed,
+                                    **data,
+                                    **states,
+                                    **params,
+                                    jitter=jitter,
+                                    parallel_message_passing=parallel_message_passing
+                                )
             
             if save_every_n_iters is not None and iteration > start_iter:
                 if iteration == num_iters or (

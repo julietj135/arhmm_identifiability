@@ -10,6 +10,7 @@ dependencies:
   - pytables
   - jax=0.3.22
   - cuda-nvcc=11.8.89
+  # also cudnn
   - pip
   - pip:
     - "jax-moseq[cuda11]"
